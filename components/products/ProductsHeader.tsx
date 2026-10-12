@@ -1,9 +1,14 @@
 type ProductsHeaderProps = {
   description: string;
+  newProductLabel?: string;
   onNewProduct: () => void;
 };
 
-export function ProductsHeader({ description, onNewProduct }: ProductsHeaderProps) {
+export function ProductsHeader({
+  description,
+  newProductLabel = "+ New Product",
+  onNewProduct,
+}: ProductsHeaderProps) {
   return (
     <header className="flex flex-col gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-end sm:justify-between">
       <div>
@@ -16,7 +21,7 @@ export function ProductsHeader({ description, onNewProduct }: ProductsHeaderProp
         onClick={onNewProduct}
         className="inline-flex items-center justify-center rounded-xl bg-[#145fcc] px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#124da8] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#145fcc]"
       >
-        + New Product
+        {newProductLabel}
       </button>
     </header>
   );

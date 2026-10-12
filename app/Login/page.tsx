@@ -1,10 +1,9 @@
-import type { Metadata } from "next";
-import Link from "next/link";
+"use client";
 
-export const metadata: Metadata = {
-  title: "Sign in to SellBot",
-  description: "Sign in to SellBot, your AI-powered selling assistant.",
-};
+import Link from "next/link";
+import { useEffect, useState } from "react";
+
+import { supabase } from "@/lib/supabase/client";
 
 const benefits = [
   "AI-powered customer conversations",
@@ -92,8 +91,7 @@ function HeroSection() {
         <br className="hidden sm:block" /> with AI.
       </h1>
       <p className="mt-6 max-w-lg text-base leading-7 text-[var(--login-secondary)] sm:text-lg sm:leading-8">
-        Let SellBot answer your customers&apos; questions 24/7 while you focus
-        on selling.
+        Let SellBot answer your customers&apos; questions 24/7 while you focus on selling.
       </p>
       <ul className="mt-9 space-y-4">
         {benefits.map((benefit) => (
@@ -105,6 +103,51 @@ function HeroSection() {
 }
 
 function LoginCard() {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loginError = new URLSearchParams(window.location.search).get("error");
+    if (!loginError) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => setError(loginError.slice(0, 300)), 0);
+    return () => window.clearTimeout(timeout);
+  }, []);
+
+  async function handleGoogleSignIn() {
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+      const appOrigin = new URL(appUrl);
+
+      if (appOrigin.protocol !== "http:" && appOrigin.protocol !== "https:") {
+        throw new Error("The configured application URL must use HTTP or HTTPS.");
+      }
+
+      const redirectUrl = new URL("/auth/callback", appOrigin.origin);
+
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: redirectUrl.toString(),
+        },
+      });
+
+      if (oauthError) {
+        throw oauthError;
+      }
+    } catch (caughtError) {
+      setIsSubmitting(false);
+      setError(
+        caughtError instanceof Error ? caughtError.message : "Unable to start Google sign-in.",
+      );
+    }
+  }
+
   return (
     <section
       aria-labelledby="login-title"
@@ -120,15 +163,24 @@ function LoginCard() {
         </p>
       </div>
       <button
-        className="flex min-h-12 w-full items-center justify-center gap-3 rounded-xl border border-[var(--login-border)] bg-[var(--login-surface)] px-4 py-3 text-sm font-medium text-[var(--login-text)] shadow-sm transition-colors hover:bg-black/[0.03] active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[var(--login-blue)] motion-reduce:transition-none dark:hover:bg-white/[0.05]"
+        className="flex min-h-12 w-full items-center justify-center gap-3 rounded-xl border border-[var(--login-border)] bg-[var(--login-surface)] px-4 py-3 text-sm font-medium text-[var(--login-text)] shadow-sm transition-colors hover:bg-black/[0.03] active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[var(--login-blue)] motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-70 dark:hover:bg-white/[0.05]"
         type="button"
+        onClick={handleGoogleSignIn}
+        disabled={isSubmitting}
+        aria-busy={isSubmitting}
       >
         <GoogleLogo />
-        <span>Continue with Google</span>
+        <span>{isSubmitting ? "Connecting to Google..." : "Continue with Google"}</span>
       </button>
-      <p className="mt-5 text-center text-xs leading-5 text-[var(--login-muted)]">
-        Sign in securely with your Google account.
-      </p>
+      {error ? (
+        <p role="alert" className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </p>
+      ) : (
+        <p className="mt-5 text-center text-xs leading-5 text-[var(--login-muted)]">
+          Sign in securely with your Google account.
+        </p>
+      )}
     </section>
   );
 }

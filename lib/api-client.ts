@@ -1,3 +1,29 @@
+import { supabase } from "./supabase/client";
+
+export class ApiRequestError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+  ) {
+    super(message);
+    this.name = "ApiRequestError";
+  }
+}
+
+export class AuthenticationRequiredError extends Error {
+  constructor() {
+    super("Your session has expired. Please sign in again.");
+    this.name = "AuthenticationRequiredError";
+  }
+}
+
+export function isAuthenticationError(error: unknown): boolean {
+  return (
+    error instanceof AuthenticationRequiredError ||
+    (error instanceof ApiRequestError && error.status === 401)
+  );
+}
+
 const DEFAULT_API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   process.env.NEXT_PUBLIC_BACKEND_URL ??
@@ -17,40 +43,21 @@ function resolveUrl(input: string) {
   return `${getBaseUrl()}/${trimmed}`;
 }
 
-function readAuthToken() {
-  if (typeof window === "undefined") {
+async function readAuthToken() {
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!session) {
     return null;
   }
 
-  const storageKeys = [
-    "sb-access-token",
-    "sb-auth-token",
-    "access_token",
-    "auth_token",
-    "sellbot_access_token",
-  ];
-
-  for (const key of storageKeys) {
-    const value = window.localStorage.getItem(key);
-    if (value) {
-      return value;
-    }
-  }
-
-  const cookieEntry = document.cookie
-    .split(";")
-    .map((entry) => entry.trim())
-    .find((entry) => {
-      const [key] = entry.split("=");
-      return /(sb-.*-auth-token|access_token|auth_token)/i.test(key ?? "");
-    });
-
-  if (!cookieEntry) {
-    return null;
-  }
-
-  const [, rawValue] = cookieEntry.split("=");
-  return rawValue ? decodeURIComponent(rawValue) : null;
+  return session.access_token ?? null;
 }
 
 function buildHeaders(initHeaders?: HeadersInit, includeJsonContent = true) {
@@ -70,6 +77,12 @@ function buildHeaders(initHeaders?: HeadersInit, includeJsonContent = true) {
 export async function publicFetch<T = unknown>(input: string, init: RequestInit = {}): Promise<T> {
   const url = resolveUrl(input);
   const headers = buildHeaders(init.headers, !(init.body instanceof FormData));
+  const token = await readAuthToken();
+
+  const isApiRequest = new URL(url).origin === new URL(getBaseUrl()).origin;
+  if (token && isApiRequest && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
 
   const response = await fetch(url, {
     ...init,
@@ -78,8 +91,9 @@ export async function publicFetch<T = unknown>(input: string, init: RequestInit 
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(
+    throw new ApiRequestError(
       errorText ? `Request failed (${response.status}): ${errorText}` : `Request failed (${response.status}).`,
+      response.status,
     );
   }
 
@@ -97,15 +111,24 @@ export async function publicFetch<T = unknown>(input: string, init: RequestInit 
 }
 
 export async function authFetch<T = unknown>(input: string, init: RequestInit = {}): Promise<T> {
-  const token = readAuthToken();
+  const token = await readAuthToken();
   const headers = buildHeaders(init.headers, !(init.body instanceof FormData));
 
-  if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
+  if (!token) {
+    throw new AuthenticationRequiredError();
   }
 
-  return publicFetch<T>(input, {
-    ...init,
-    headers,
-  });
+  headers.set("Authorization", `Bearer ${token}`);
+
+  try {
+    return await publicFetch<T>(input, {
+      ...init,
+      headers,
+    });
+  } catch (error) {
+    if (error instanceof ApiRequestError && error.status === 401) {
+      throw new AuthenticationRequiredError();
+    }
+    throw error;
+  }
 }

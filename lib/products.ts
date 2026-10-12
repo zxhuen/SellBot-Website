@@ -1,4 +1,9 @@
-import { authFetch } from "./api-client";
+import {
+  ApiRequestError,
+  AuthenticationRequiredError,
+  authFetch,
+  publicFetch,
+} from "./api-client";
 
 export interface ProductFormValues {
   name: string;
@@ -11,6 +16,7 @@ export interface Product {
   id: string | number;
   public_id?: string | number;
   name: string;
+  title?: string;
   description: string;
   price: number | string;
   contact_link?: string;
@@ -44,6 +50,7 @@ function normalizeProduct(raw: unknown): Product | null {
     id: String(productId),
     public_id: typeof publicId === "string" || typeof publicId === "number" ? publicId : String(publicId),
     name: String(productName),
+    title: String(productName),
     description: typeof raw.description === "string" ? raw.description : "",
     price: Number.isFinite(numericPrice) ? numericPrice : 0,
     contact_link:
@@ -58,61 +65,68 @@ function normalizeProduct(raw: unknown): Product | null {
   };
 }
 
-function decodeProductCollection(data: unknown): Product[] | null {
-  if (Array.isArray(data)) {
-    return data.map((item) => normalizeProduct(item)).filter(Boolean) as Product[];
-  }
-
-  if (!isRecord(data)) {
-    return null;
-  }
-
-  const possibleCollections = [
-    data.items,
-    data.products,
-    data.data,
-    data.results,
-    data.product,
-  ];
-
-  for (const candidate of possibleCollections) {
-    if (Array.isArray(candidate)) {
-      return candidate.map((item) => normalizeProduct(item)).filter(Boolean) as Product[];
-    }
-  }
-
-  if (isRecord(data.products)) {
-    return [normalizeProduct(data.products)].filter(Boolean) as Product[];
-  }
-
-  return null;
+interface ProductListItem {
+  id: string;
+  title: string;
+  description: string;
+  price: string | number;
+  public_id: string;
+  status: string;
 }
 
-export async function fetchProducts(): Promise<Product[]> {
-  const attemptedPaths = ["/products", "/api/products", "/product"];
-  let lastError: unknown;
-
-  for (const path of attemptedPaths) {
-    try {
-      const response = await authFetch<unknown>(path);
-      const collection = decodeProductCollection(response);
-
-      if (collection !== null) {
-        return collection;
-      }
-    } catch (error) {
-      lastError = error;
-    }
-  }
-
-  if (lastError) {
-    throw lastError;
-  }
-
-  return [];
+function isProductListItem(value: unknown): value is ProductListItem {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.title === "string" &&
+    typeof value.description === "string" &&
+    (typeof value.price === "string" || typeof value.price === "number") &&
+    typeof value.public_id === "string" &&
+    typeof value.status === "string"
+  );
 }
 
-export async function createProduct(values: ProductFormValues): Promise<Product> {
+export async function getProducts(): Promise<Product[]> {
+  if (productsRequest) {
+    return productsRequest;
+  }
+
+  productsRequest = requestProducts();
+
+  try {
+    return await productsRequest;
+  } finally {
+    productsRequest = null;
+  }
+}
+
+let productsRequest: Promise<Product[]> | null = null;
+
+async function requestProducts(): Promise<Product[]> {
+  const response = await authFetch<unknown>("/Products/list-product", { method: "GET" });
+
+  if (!Array.isArray(response)) {
+    throw new Error("The products service returned an invalid response.");
+  }
+
+  return response.map((item, index) => {
+    if (!isProductListItem(item)) {
+      throw new Error(`The products service returned invalid data for product ${index + 1}.`);
+    }
+
+    return {
+      id: item.id,
+      public_id: item.public_id,
+      name: item.title,
+      title: item.title,
+      description: item.description,
+      price: item.price,
+      status: item.status,
+    };
+  });
+}
+
+export async function addProduct(values: ProductFormValues): Promise<Product> {
   const payload = {
     name: values.name.trim(),
     description: values.description.trim(),
@@ -120,7 +134,7 @@ export async function createProduct(values: ProductFormValues): Promise<Product>
     contact_link: values.contact_link.trim(),
   };
 
-  const response = await authFetch<unknown>("/products", {
+  const response = await authFetch<unknown>("/Products/add-product", {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -140,45 +154,78 @@ export async function createProduct(values: ProductFormValues): Promise<Product>
   throw new Error("The backend did not return the created product.");
 }
 
-export async function fetchProductAnalytics(productId: string): Promise<Record<string, unknown>> {
-  const candidatePaths = [
-    `/products/${productId}/analytics`,
-    `/product/${productId}/analytics`,
-    `/products/${productId}/sessions`,
-    `/products/${productId}`,
-  ];
+export const createProduct = addProduct;
 
-  for (const path of candidatePaths) {
-    try {
-      const response = await authFetch<unknown>(path);
+function requireProductId(productId: string) {
+  if (!productId.trim()) {
+    throw new Error("Product id is required.");
+  }
+}
 
-      if (response == null) {
-        continue;
-      }
+export async function deleteProduct(productId: string): Promise<unknown> {
+  requireProductId(productId);
 
-      if (isRecord(response)) {
-        if ("analytics" in response && isRecord(response.analytics)) {
-          return response.analytics as Record<string, unknown>;
-        }
+  return authFetch<unknown>(
+    `/Products/delete-product?id=${encodeURIComponent(productId)}`,
+    { method: "DELETE" },
+  );
+}
 
-        if ("data" in response && isRecord(response.data)) {
-          if ("analytics" in response.data && isRecord(response.data.analytics)) {
-            return response.data.analytics as Record<string, unknown>;
-          }
+export async function markProductAsSold(productId: string): Promise<unknown> {
+  requireProductId(productId);
 
-          return response.data as Record<string, unknown>;
-        }
+  return authFetch<unknown>(
+    `/Products/mark-as-sold?id=${encodeURIComponent(productId)}`,
+    { method: "PATCH" },
+  );
+}
 
-        return response as Record<string, unknown>;
-      }
+export async function getChatSessionCount(productId: string): Promise<unknown> {
+  requireProductId(productId);
 
-      if (typeof response === "number" || typeof response === "string") {
-        return { chat_session_count: response };
-      }
-    } catch {
-      continue;
-    }
+  return authFetch<unknown>(
+    `/Analytics/get-chat-session-count?product_id=${encodeURIComponent(productId)}`,
+    { method: "POST" },
+  );
+}
+
+export async function getProductByPublicId(publicId: string): Promise<Product> {
+  if (!publicId.trim()) {
+    throw new Error("Public id is required.");
   }
 
-  return { product_id: productId, chat_session_count: 0 };
+  let response: unknown;
+  try {
+    response = await publicFetch<unknown>(
+      `/Products/get-product-public-id?public_id=${encodeURIComponent(publicId)}`,
+      { method: "GET" },
+    );
+  } catch (error) {
+    if (error instanceof ApiRequestError && error.status === 401) {
+      throw new AuthenticationRequiredError();
+    }
+    throw error;
+  }
+  const product = normalizeProduct(response);
+
+  if (!product) {
+    throw new Error("The product service returned invalid product data.");
+  }
+
+  return product;
+}
+
+export async function getProductConversationHistory(productId: string): Promise<unknown[]> {
+  requireProductId(productId);
+
+  const response = await authFetch<unknown>(
+    `/Products/get-product-history?product_id=${encodeURIComponent(productId)}`,
+    { method: "GET" },
+  );
+
+  if (!Array.isArray(response)) {
+    throw new Error("The conversation service returned an invalid response.");
+  }
+
+  return response;
 }
