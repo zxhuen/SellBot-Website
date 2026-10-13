@@ -36,7 +36,8 @@ export function ProductCard({
   const [isConfirmingDelete, setConfirmingDelete] = useState(false);
   const copyTimeout = useRef<number | null>(null);
   const productId = String(product.id);
-  const publicId = String(product.public_id ?? product.id);
+  const publicId = product.public_id == null ? "" : String(product.public_id).trim();
+  const productLinkId = String(product.public_id ?? product.id);
   const isSold = String(product.status ?? "available").toLowerCase() === "sold";
   const status = isSold
     ? "Sold"
@@ -54,7 +55,7 @@ export function ProductCard({
   async function copyProductLink() {
     try {
       const productUrl = new URL(
-        `/product?public_id=${encodeURIComponent(publicId)}`,
+        `/product?public_id=${encodeURIComponent(productLinkId)}`,
         window.location.origin,
       ).toString();
       await navigator.clipboard.writeText(productUrl);
@@ -112,12 +113,23 @@ export function ProductCard({
       </div>
 
       <div className="mt-5 flex flex-wrap gap-2 pt-2">
-        <Link
-          href={`/product?public_id=${encodeURIComponent(publicId)}`}
-          className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#145fcc]"
-        >
-          Open
-        </Link>
+        {publicId ? (
+          <Link
+            href={`/chat?public_id=${encodeURIComponent(publicId)}`}
+            className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#145fcc]"
+          >
+            Open
+          </Link>
+        ) : (
+          <button
+            type="button"
+            disabled
+            title="This product does not have a public ID."
+            className="inline-flex cursor-not-allowed items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-400"
+          >
+            Open
+          </button>
+        )}
         <button
           type="button"
           onClick={() => onOpenAnalytics(productId)}

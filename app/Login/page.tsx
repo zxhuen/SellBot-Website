@@ -129,6 +129,10 @@ function LoginCard() {
       }
 
       const redirectUrl = new URL("/auth/callback", appOrigin.origin);
+      const nextPath = new URLSearchParams(window.location.search).get("next");
+      if (nextPath) {
+        redirectUrl.searchParams.set("next", nextPath);
+      }
 
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: "google",
