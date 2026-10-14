@@ -29,6 +29,7 @@ const DEFAULT_API_BASE_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL ??
   process.env.NEXT_PUBLIC_SELLBOT_API_URL ??
   "http://localhost:8000";
+let loginRedirectStarted = false;
 
 function getBaseUrl() {
   return DEFAULT_API_BASE_URL.replace(/\/+$/, "");
@@ -58,6 +59,18 @@ async function readAuthToken() {
   }
 
   return session.access_token ?? null;
+}
+
+function redirectToLogin() {
+  if (typeof window === "undefined" || loginRedirectStarted) {
+    return;
+  }
+
+  loginRedirectStarted = true;
+  const next = `${window.location.pathname}${window.location.search}`;
+  const loginUrl = new URL("/Login", window.location.origin);
+  loginUrl.searchParams.set("next", next);
+  window.location.replace(loginUrl.toString());
 }
 
 function buildHeaders(initHeaders?: HeadersInit, includeJsonContent = true) {
@@ -90,6 +103,10 @@ export async function publicFetch<T = unknown>(input: string, init: RequestInit 
   });
 
   if (!response.ok) {
+    if (response.status === 401 && isApiRequest) {
+      redirectToLogin();
+    }
+
     const errorText = await response.text();
     throw new ApiRequestError(
       errorText ? `Request failed (${response.status}): ${errorText}` : `Request failed (${response.status}).`,
@@ -115,6 +132,7 @@ export async function authFetch<T = unknown>(input: string, init: RequestInit = 
   const headers = buildHeaders(init.headers, !(init.body instanceof FormData));
 
   if (!token) {
+    redirectToLogin();
     throw new AuthenticationRequiredError();
   }
 
@@ -127,6 +145,7 @@ export async function authFetch<T = unknown>(input: string, init: RequestInit = 
     });
   } catch (error) {
     if (error instanceof ApiRequestError && error.status === 401) {
+      redirectToLogin();
       throw new AuthenticationRequiredError();
     }
     throw error;
