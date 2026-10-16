@@ -1,4 +1,8 @@
+"use client";
+
 import Link from "next/link";
+import { Suspense } from "react";
+import { usePathname } from "next/navigation";
 
 const sellerLinks = [
   { href: "/customer-chats", label: "Customer Chats" },
@@ -7,10 +11,23 @@ const sellerLinks = [
 
 const buyerLinks = [
   { href: "/buyer-history", label: "Chat History" },
-  { href: "/profile?return_to=/products", label: "Profile" },
 ];
 
+const profileLink = { href: "/profile?return_to=/products", label: "Profile" };
+
 export function ProductsNavbar() {
+  return (
+    <Suspense fallback={<NavbarContent pathname={null} />}>
+      <NavbarWithPathname />
+    </Suspense>
+  );
+}
+
+function NavbarWithPathname() {
+  return <NavbarContent pathname={usePathname()} />;
+}
+
+function NavbarContent({ pathname }: { pathname: string | null }) {
   return (
     <nav
       aria-label="Main navigation"
@@ -28,38 +45,74 @@ export function ProductsNavbar() {
           <span className="text-lg font-semibold tracking-[-0.04em] text-slate-900">SellBot</span>
         </Link>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="flex flex-wrap items-center gap-2 rounded-full border border-slate-200 bg-slate-50 p-1 text-sm font-medium text-slate-600">
-            {sellerLinks.map(({ href, label }) => {
-              const isActive = href === "/products";
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  aria-current={isActive ? "page" : undefined}
-                  className={[
-                    "rounded-full px-3 py-2 transition-colors",
-                    isActive
-                      ? "bg-[#145fcc] text-white shadow-sm"
-                      : "hover:bg-slate-200/80 hover:text-slate-900",
-                  ].join(" ")}
-                >
-                  {label}
-                </Link>
-              );
-            })}
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+              Seller
+            </span>
+            <div className="flex flex-wrap items-center gap-2 rounded-full border border-slate-200 bg-slate-50 p-1 text-sm font-medium text-slate-600">
+              {sellerLinks.map(({ href, label }) => {
+                const linkPath = href.split("?")[0];
+                const isActive = pathname === linkPath;
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    aria-current={isActive ? "page" : undefined}
+                    className={[
+                      "rounded-full px-3 py-2 transition-colors",
+                      isActive
+                        ? "bg-[#145fcc] text-white shadow-sm"
+                        : "hover:bg-slate-200/80 hover:text-slate-900",
+                    ].join(" ")}
+                  >
+                    {label}
+                  </Link>
+                );
+              })}
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 rounded-full border border-slate-200 bg-slate-50 p-1 text-sm font-medium text-slate-600">
-            {buyerLinks.map(({ href, label }) => (
-              <Link
-                key={href}
-                href={href}
-                className="rounded-full px-3 py-2 transition-colors hover:bg-slate-200/80 hover:text-slate-900"
-              >
-                {label}
-              </Link>
-            ))}
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+              Buyer
+            </span>
+            <div className="flex flex-wrap items-center gap-2 rounded-full border border-slate-200 bg-slate-50 p-1 text-sm font-medium text-slate-600">
+              {buyerLinks.map(({ href, label }) => {
+                const linkPath = href.split("?")[0];
+                const isActive = pathname === linkPath;
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    aria-current={isActive ? "page" : undefined}
+                    className={[
+                      "rounded-full px-3 py-2 transition-colors",
+                      isActive
+                        ? "bg-[#145fcc] text-white shadow-sm"
+                        : "hover:bg-slate-200/80 hover:text-slate-900",
+                    ].join(" ")}
+                  >
+                    {label}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 p-1 text-sm font-medium text-slate-600">
+            <Link
+              href={profileLink.href}
+              aria-current={pathname === "/profile" ? "page" : undefined}
+              className={[
+                "rounded-full px-3 py-2 transition-colors",
+                pathname === "/profile"
+                  ? "bg-[#145fcc] text-white shadow-sm"
+                  : "hover:bg-slate-200/80 hover:text-slate-900",
+              ].join(" ")}
+            >
+              {profileLink.label}
+            </Link>
           </div>
         </div>
       </div>
