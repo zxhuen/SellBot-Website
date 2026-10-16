@@ -215,7 +215,36 @@ export async function getProductByPublicId(publicId: string): Promise<Product> {
   return product;
 }
 
-export async function getProductConversationHistory(productId: string): Promise<unknown[]> {
+export interface ChatSessionResponse {
+  id: string;
+  product: {
+    title: string;
+    price: string | number;
+  };
+  user: {
+    display_name: string;
+    avatar_url: string | null;
+  };
+  last_message_at: string;
+}
+
+function isChatSessionResponse(value: unknown): value is ChatSessionResponse {
+  if (!isRecord(value) || typeof value.id !== "string" || typeof value.last_message_at !== "string") {
+    return false;
+  }
+
+  const { product, user } = value;
+  return (
+    isRecord(product) &&
+    typeof product.title === "string" &&
+    (typeof product.price === "string" || typeof product.price === "number") &&
+    isRecord(user) &&
+    typeof user.display_name === "string" &&
+    (typeof user.avatar_url === "string" || user.avatar_url === null)
+  );
+}
+
+export async function getProductChatMessages(productId: string): Promise<ChatSessionResponse[]> {
   requireProductId(productId);
 
   const response = await authFetch<unknown>(
@@ -227,5 +256,15 @@ export async function getProductConversationHistory(productId: string): Promise<
     throw new Error("The conversation service returned an invalid response.");
   }
 
-  return response;
+  return response.map((conversation, index) => {
+    if (!isChatSessionResponse(conversation)) {
+      throw new Error(
+        `The conversation service returned invalid data for conversation ${index + 1}.`,
+      );
+    }
+
+    return conversation;
+  });
 }
+
+export const getProductConversationHistory = getProductChatMessages;

@@ -77,6 +77,19 @@ export function loadChatSession(publicId: string): Promise<ChatMessage[]> {
   return request;
 }
 
+export async function loadProductChatMessages(chatSessionId: string): Promise<ChatMessage[]> {
+  if (!chatSessionId.trim()) {
+    throw new Error("A chat session ID was not provided.");
+  }
+
+  const response = await authFetch<unknown>(
+    `/Products/get-chat-messages?chat_session_id=${encodeURIComponent(chatSessionId)}`,
+    { method: "GET" },
+  );
+
+  return parseMessages(response);
+}
+
 export async function sendLunaMessage(publicId: string, message: string): Promise<string> {
   requirePublicId(publicId);
 

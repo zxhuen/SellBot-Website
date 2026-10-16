@@ -1,26 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 
 import { ProductsNavbar } from "@/components/products/ProductsNavbar";
 import { isAuthenticationError } from "@/lib/api-client";
-import { getProductConversationHistory } from "@/lib/products";
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function formatValue(value: unknown): string | null {
-  if (value === null || value === undefined || typeof value === "object") {
-    return null;
-  }
-  return String(value);
-}
+import { getProductChatMessages, type ChatSessionResponse } from "@/lib/products";
 
 export default function ProductHistoryPage() {
   const [productId, setProductId] = useState<string | null>(null);
-  const [conversations, setConversations] = useState<unknown[]>([]);
+  const [conversations, setConversations] = useState<ChatSessionResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [requiresSignIn, setRequiresSignIn] = useState(false);
@@ -36,9 +26,8 @@ export default function ProductHistoryPage() {
         return;
       }
       setProductId(id);
-
       try {
-        const result = await getProductConversationHistory(id);
+        const result = await getProductChatMessages(id);
         if (isMounted) {
           setConversations(result);
         }
@@ -73,9 +62,7 @@ export default function ProductHistoryPage() {
         <section className="mt-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
           <header className="border-b border-slate-200 pb-5">
             <h1 className="text-3xl font-semibold tracking-[-0.05em]">Product Conversations</h1>
-            <p className="mt-2 break-all text-sm text-slate-600">
-              {productId ? `Product ID: ${productId}` : "Conversation history"}
-            </p>
+            <p className="mt-2 text-sm text-slate-600">Recent messages from interested customers</p>
           </header>
 
           {loading ? (
@@ -100,31 +87,52 @@ export default function ProductHistoryPage() {
             </div>
           ) : (
             <ul className="mt-5 space-y-3">
-              {conversations.map((conversation, index) => {
-                const fields = isRecord(conversation)
-                  ? Object.entries(conversation)
-                      .map(([key, value]) => [key, formatValue(value)] as const)
-                      .filter((entry): entry is readonly [string, string] => entry[1] !== null)
-                  : [["Conversation", formatValue(conversation) ?? "Details unavailable"] as const];
-                const stableId = isRecord(conversation)
-                  ? conversation.id ?? conversation.session_id ?? conversation.chat_session_id
-                  : undefined;
-
+              {conversations.map((conversation) => {
+                const messageDate = new Date(conversation.last_message_at);
+                const readableDate = Number.isNaN(messageDate.getTime())
+                  ? "Time unavailable"
+                  : messageDate.toLocaleString(undefined, {
+                      dateStyle: "long",
+                      timeStyle: "short",
+                    });
+                const avatarUrl = conversation.user.avatar_url?.trim();
                 return (
-                  <li
-                    key={stableId === undefined ? index : String(stableId)}
-                    className="rounded-2xl border border-slate-200 bg-white p-4"
-                  >
-                    <dl className="grid gap-3 sm:grid-cols-2">
-                      {fields.map(([key, value]) => (
-                        <div key={key} className="min-w-0">
-                          <dt className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
-                            {key.replace(/_/g, " ")}
-                          </dt>
-                          <dd className="mt-1 break-words text-sm text-slate-900">{value}</dd>
+                  <li key={conversation.id}>
+                    <Link
+                      href={`/product-history/${encodeURIComponent(conversation.id)}?product_id=${encodeURIComponent(productId ?? "")}`}
+                      className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-[#145fcc] hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#145fcc] sm:flex-row sm:items-center"
+                      aria-label={`View conversation with ${conversation.user.display_name}`}
+                    >
+                      {avatarUrl ? (
+                        <Image
+                          src={avatarUrl}
+                          alt={`${conversation.user.display_name}'s avatar`}
+                          width={48}
+                          height={48}
+                          unoptimized
+                          className="h-12 w-12 shrink-0 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div
+                          aria-hidden="true"
+                          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-200 text-lg font-semibold text-slate-600"
+                        >
+                          {conversation.user.display_name.trim().charAt(0).toUpperCase() || "?"}
                         </div>
-                      ))}
-                    </dl>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-semibold text-slate-900">
+                          {conversation.user.display_name}
+                        </p>
+                        <p className="mt-1 truncate text-sm text-slate-600">
+                          {conversation.product.title} · {conversation.product.price}
+                        </p>
+                        <p className="mt-2 text-sm text-slate-500">
+                          Last message:{" "}
+                          <time dateTime={conversation.last_message_at}>{readableDate}</time>
+                        </p>
+                      </div>
+                    </Link>
                   </li>
                 );
               })}
