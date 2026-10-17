@@ -10,7 +10,7 @@ const sellerLinks = [
 ];
 
 const buyerLinks = [
-  { href: "/buyer-history", label: "Chat History" },
+  { href: "/ChatHistory", label: "Chat History" },
 ];
 
 const profileLink = { href: "/profile?return_to=/products", label: "Profile" };
@@ -80,7 +80,7 @@ function NavbarContent({ pathname }: { pathname: string | null }) {
             <div className="flex flex-wrap items-center gap-2 rounded-full border border-slate-200 bg-slate-50 p-1 text-sm font-medium text-slate-600">
               {buyerLinks.map(({ href, label }) => {
                 const linkPath = href.split("?")[0];
-                const isActive = pathname === linkPath;
+                const isActive = pathname?.toLowerCase() === linkPath.toLowerCase();
                 return (
                   <Link
                     key={href}
