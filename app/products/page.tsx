@@ -9,6 +9,7 @@ import { ProductsHeader } from "@/components/products/ProductsHeader";
 import { ProductsNavbar } from "@/components/products/ProductsNavbar";
 import { ProductsToolbar } from "@/components/products/ProductsToolbar";
 import { isAuthenticationError } from "@/lib/api-client";
+import { useModalAccessibility } from "@/lib/use-modal-accessibility";
 import {
   addProduct,
   deleteProduct,
@@ -33,10 +34,21 @@ export default function ProductsPage() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [createRequiresSignIn, setCreateRequiresSignIn] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [markSoldProductId, setMarkSoldProductId] = useState<string | null>(null);
   const [isAnalyticsOpen, setAnalyticsOpen] = useState(false);
   const [cooldownUntil, setCooldownUntil] = useState<number | null>(null);
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
   const deleteTimers = useRef(new Map<string, number>());
+  const markSoldProduct = products.find(
+    (product) => String(product.id) === markSoldProductId,
+  );
+  const isMarkingSelectedProductSold = markSoldProductId
+    ? actions[markSoldProductId] === "sold"
+    : false;
+  const markSoldConfirmationRef = useModalAccessibility<HTMLDivElement>(
+    Boolean(markSoldProduct),
+    () => setMarkSoldProductId(null),
+  );
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
@@ -217,7 +229,7 @@ export default function ProductsPage() {
                 setAnalyticsOpen(true);
               }}
               onDelete={(productId) => void handleProductAction(productId, "delete")}
-              onMarkAsSold={(productId) => void handleProductAction(productId, "sold")}
+              onMarkAsSold={setMarkSoldProductId}
               onRetry={() => void loadProducts()}
             />
           </div>
@@ -246,6 +258,60 @@ export default function ProductsPage() {
           setSelectedProductId(null);
         }}
       />
+
+      {markSoldProduct ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 py-6"
+          onClick={(event) => {
+            if (event.target === event.currentTarget && !isMarkingSelectedProductSold) {
+              setMarkSoldProductId(null);
+            }
+          }}
+        >
+          <div
+            ref={markSoldConfirmationRef}
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="mark-sold-title"
+            aria-describedby="mark-sold-description"
+            tabIndex={-1}
+            className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl"
+          >
+            <h2 id="mark-sold-title" className="text-lg font-semibold text-slate-900">
+              Mark this product as sold?
+            </h2>
+            <p id="mark-sold-description" className="mt-2 text-sm leading-6 text-slate-600">
+              This will change the status of “{markSoldProduct.title ?? markSoldProduct.name}” to
+              sold. Confirm only if the product has been sold.
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                autoFocus
+                disabled={isMarkingSelectedProductSold}
+                onClick={() => setMarkSoldProductId(null)}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isMarkingSelectedProductSold}
+                onClick={() => {
+                  const productId = markSoldProductId;
+                  setMarkSoldProductId(null);
+                  if (productId) {
+                    void handleProductAction(productId, "sold");
+                  }
+                }}
+                className="rounded-xl bg-[#145fcc] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#124da8] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#145fcc] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isMarkingSelectedProductSold ? "Marking sold..." : "Confirm sold"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
