@@ -15,7 +15,7 @@ type CreateProductModalProps = {
 };
 
 const initialValues: ProductFormValues = {
-  name: "",
+  title: "",
   price: "",
   description: "",
   contact_link: "",
@@ -52,18 +52,27 @@ export function CreateProductModal({
     validContactUrl = false;
   }
   const isFormValid =
-    values.name.trim().length > 0 &&
+    values.title.trim().length > 0 &&
+    values.title.trim().length <= 255 &&
     values.description.trim().length > 0 &&
+    values.description.trim().length <= 1000 &&
     values.price.trim().length > 0 &&
     Number.isFinite(price) &&
     price > 0 &&
+    values.contact_link.trim().length <= 2083 &&
     validContactUrl;
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
+    if (isSubmitting) {
+      return;
+    }
+
     if (!isFormValid) {
-      setSubmitError("Enter a product name, description, positive price, and valid HTTP or HTTPS contact URL.");
+      setSubmitError(
+        "Enter a product title (up to 255 characters), description (up to 1000 characters), positive price, and valid HTTP or HTTPS contact URL.",
+      );
       return;
     }
 
@@ -119,12 +128,13 @@ export function CreateProductModal({
             </label>
             <input
               id="product-name"
-              name="name"
+              name="title"
               type="text"
               autoFocus
               autoComplete="off"
-              value={values.name}
-              onChange={(event) => handleChange("name", event.target.value)}
+              maxLength={255}
+              value={values.title}
+              onChange={(event) => handleChange("title", event.target.value)}
               placeholder="Wireless Mouse"
               required
               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
@@ -158,6 +168,7 @@ export function CreateProductModal({
               id="product-description"
               name="description"
               rows={4}
+              maxLength={1000}
               value={values.description}
               onChange={(event) => handleChange("description", event.target.value)}
               placeholder="Describe your product..."
@@ -174,6 +185,7 @@ export function CreateProductModal({
               id="product-contact-link"
               name="contact_link"
               type="url"
+              maxLength={2083}
               value={values.contact_link}
               onChange={(event) => handleChange("contact_link", event.target.value)}
               placeholder="https://example.com/contact"

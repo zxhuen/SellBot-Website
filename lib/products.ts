@@ -6,7 +6,7 @@ import {
 } from "./api-client";
 
 export interface ProductFormValues {
-  name: string;
+  title: string;
   price: string;
   description: string;
   contact_link: string;
@@ -128,7 +128,7 @@ async function requestProducts(): Promise<Product[]> {
 
 export async function addProduct(values: ProductFormValues): Promise<Product> {
   const payload = {
-    name: values.name.trim(),
+    title: values.title.trim(),
     description: values.description.trim(),
     price: Number(values.price),
     contact_link: values.contact_link.trim(),

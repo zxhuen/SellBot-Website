@@ -4,10 +4,63 @@ export class ApiRequestError extends Error {
   constructor(
     message: string,
     public readonly status: number,
+    public readonly validationErrors: ApiValidationError[] = [],
   ) {
     super(message);
     this.name = "ApiRequestError";
   }
+}
+
+export interface ApiValidationError {
+  loc: (string | number)[];
+  msg: string;
+  type: string;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function getValidationErrors(responseBody: unknown): ApiValidationError[] {
+  if (!isRecord(responseBody) || !Array.isArray(responseBody.detail)) {
+    return [];
+  }
+
+  return responseBody.detail.flatMap((issue): ApiValidationError[] => {
+    if (
+      !isRecord(issue) ||
+      !Array.isArray(issue.loc) ||
+      !issue.loc.every((part) => typeof part === "string" || typeof part === "number") ||
+      typeof issue.msg !== "string" ||
+      typeof issue.type !== "string"
+    ) {
+      return [];
+    }
+
+    return [{ loc: issue.loc, msg: issue.msg, type: issue.type }];
+  });
+}
+
+function getHttpErrorMessage(status: number, validationErrors: ApiValidationError[]): string {
+  if (status === 422) {
+    if (validationErrors.length === 0) {
+      return "The product details were rejected. Check the required fields and try again.";
+    }
+
+    const issues = validationErrors.map((issue) => {
+      const field = issue.loc.filter((part) => part !== "body").join(".") || "request";
+      return `${field}: ${issue.msg}`;
+    });
+    return `Validation failed: ${issues.join(" ")}`;
+  }
+  if (status === 429) {
+    return "Too many requests. Please wait a moment before trying again.";
+  }
+  if (status >= 500) {
+    return "The service is temporarily unavailable. Please try again later.";
+  }
+
+  return `Request failed (${status}).`;
 }
 
 export class AuthenticationRequiredError extends Error {
@@ -107,10 +160,17 @@ export async function publicFetch<T = unknown>(input: string, init: RequestInit 
       redirectToLogin();
     }
 
-    const errorText = await response.text();
+    let responseBody: unknown;
+    try {
+      responseBody = await response.json();
+    } catch {
+      responseBody = null;
+    }
+    const validationErrors = getValidationErrors(responseBody);
     throw new ApiRequestError(
-      errorText ? `Request failed (${response.status}): ${errorText}` : `Request failed (${response.status}).`,
+      getHttpErrorMessage(response.status, validationErrors),
       response.status,
+      validationErrors,
     );
   }
 
