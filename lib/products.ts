@@ -228,6 +228,8 @@ export interface ChatSessionResponse {
   last_message_at: string;
 }
 
+export const CUSTOMER_CHAT_PAGE_SIZE = 10;
+
 function isChatSessionResponse(value: unknown): value is ChatSessionResponse {
   if (!isRecord(value) || typeof value.id !== "string" || typeof value.last_message_at !== "string") {
     return false;
@@ -242,6 +244,41 @@ function isChatSessionResponse(value: unknown): value is ChatSessionResponse {
     typeof user.display_name === "string" &&
     (typeof user.avatar_url === "string" || user.avatar_url === null)
   );
+}
+
+export async function getCustomerChatSessions(
+  offset: number,
+  limit = CUSTOMER_CHAT_PAGE_SIZE,
+): Promise<ChatSessionResponse[]> {
+  if (!Number.isSafeInteger(offset) || offset < 0) {
+    throw new Error("Conversation offset must be a nonnegative integer.");
+  }
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > CUSTOMER_CHAT_PAGE_SIZE) {
+    throw new Error(`Conversation page size must be between 1 and ${CUSTOMER_CHAT_PAGE_SIZE}.`);
+  }
+
+  const query = new URLSearchParams({
+    offset: String(offset),
+    limit: String(limit),
+  });
+  const response = await authFetch<unknown>(`/Products/Customer-Chats?${query.toString()}`, {
+    method: "GET",
+    cache: "no-store",
+  });
+
+  if (!Array.isArray(response)) {
+    throw new Error("The conversation service returned an invalid response.");
+  }
+
+  return response.map((conversation, index) => {
+    if (!isChatSessionResponse(conversation)) {
+      throw new Error(
+        `The conversation service returned invalid data for conversation ${index + 1}.`,
+      );
+    }
+
+    return conversation;
+  });
 }
 
 export async function getProductChatMessages(productId: string): Promise<ChatSessionResponse[]> {

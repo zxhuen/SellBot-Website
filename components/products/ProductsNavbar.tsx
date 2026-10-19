@@ -5,7 +5,7 @@ import { Suspense } from "react";
 import { usePathname } from "next/navigation";
 
 const sellerLinks = [
-  { href: "/customer-chats", label: "Customer Chats" },
+  { href: "/customer-chat", label: "Customer Chats" },
   { href: "/products", label: "Products" },
 ];
 
