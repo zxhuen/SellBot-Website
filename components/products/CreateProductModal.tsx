@@ -32,6 +32,7 @@ export function CreateProductModal({
 }: CreateProductModalProps) {
   const [values, setValues] = useState<ProductFormValues>(initialValues);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [showValidationErrors, setShowValidationErrors] = useState(false);
   const dialogRef = useModalAccessibility<HTMLDivElement>(isOpen, onClose);
 
   if (!isOpen) {
@@ -61,6 +62,30 @@ export function CreateProductModal({
     price > 0 &&
     values.contact_link.trim().length <= 2083 &&
     validContactUrl;
+  const validationErrors = {
+    title:
+      values.title.trim().length === 0
+        ? "Enter a product title."
+        : values.title.trim().length > 255
+          ? "Use 255 characters or fewer."
+          : null,
+    price:
+      values.price.trim().length === 0 || !Number.isFinite(price) || price <= 0
+        ? "Enter a price greater than 0."
+        : null,
+    description:
+      values.description.trim().length === 0
+        ? "Enter a product description."
+        : values.description.trim().length > 1000
+          ? "Use 1,000 characters or fewer."
+          : null,
+    contact_link:
+      values.contact_link.trim().length > 2083
+        ? "Use a contact URL with 2,083 characters or fewer."
+        : !validContactUrl
+          ? "Enter a valid HTTP or HTTPS URL."
+          : null,
+  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -70,9 +95,7 @@ export function CreateProductModal({
     }
 
     if (!isFormValid) {
-      setSubmitError(
-        "Enter a product title (up to 255 characters), description (up to 1000 characters), positive price, and valid HTTP or HTTPS contact URL.",
-      );
+      setShowValidationErrors(true);
       return;
     }
 
@@ -80,6 +103,7 @@ export function CreateProductModal({
       setSubmitError(null);
       await onSubmit(values);
       setValues(initialValues);
+      setShowValidationErrors(false);
     } catch (caughtError) {
       setSubmitError(
         caughtError instanceof Error ? caughtError.message : "Unable to create the product right now.",
@@ -137,8 +161,17 @@ export function CreateProductModal({
               onChange={(event) => handleChange("title", event.target.value)}
               placeholder="Wireless Mouse"
               required
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              aria-invalid={showValidationErrors && validationErrors.title ? true : undefined}
+              aria-describedby={
+                showValidationErrors && validationErrors.title ? "product-name-error" : undefined
+              }
             />
+            {showValidationErrors && validationErrors.title ? (
+              <p id="product-name-error" className="mt-1.5 text-sm text-red-700">
+                {validationErrors.title}
+              </p>
+            ) : null}
           </div>
 
           <div>
@@ -156,8 +189,17 @@ export function CreateProductModal({
               onChange={(event) => handleChange("price", event.target.value)}
               placeholder="29.99"
               required
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              aria-invalid={showValidationErrors && validationErrors.price ? true : undefined}
+              aria-describedby={
+                showValidationErrors && validationErrors.price ? "product-price-error" : undefined
+              }
             />
+            {showValidationErrors && validationErrors.price ? (
+              <p id="product-price-error" className="mt-1.5 text-sm text-red-700">
+                {validationErrors.price}
+              </p>
+            ) : null}
           </div>
 
           <div>
@@ -173,8 +215,19 @@ export function CreateProductModal({
               onChange={(event) => handleChange("description", event.target.value)}
               placeholder="Describe your product..."
               required
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              aria-invalid={showValidationErrors && validationErrors.description ? true : undefined}
+              aria-describedby={
+                showValidationErrors && validationErrors.description
+                  ? "product-description-error"
+                  : undefined
+              }
             />
+            {showValidationErrors && validationErrors.description ? (
+              <p id="product-description-error" className="mt-1.5 text-sm text-red-700">
+                {validationErrors.description}
+              </p>
+            ) : null}
           </div>
 
           <div>
@@ -190,8 +243,19 @@ export function CreateProductModal({
               onChange={(event) => handleChange("contact_link", event.target.value)}
               placeholder="https://example.com/contact"
               required
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              aria-invalid={showValidationErrors && validationErrors.contact_link ? true : undefined}
+              aria-describedby={
+                showValidationErrors && validationErrors.contact_link
+                  ? "product-contact-link-error"
+                  : undefined
+              }
             />
+            {showValidationErrors && validationErrors.contact_link ? (
+              <p id="product-contact-link-error" className="mt-1.5 text-sm text-red-700">
+                {validationErrors.contact_link}
+              </p>
+            ) : null}
           </div>
 
           {displayError ? (
@@ -224,7 +288,7 @@ export function CreateProductModal({
             </button>
             <button
               type="submit"
-              disabled={!isFormValid || isSubmitting || cooldownRemaining > 0}
+              disabled={isSubmitting || cooldownRemaining > 0}
               className="rounded-xl bg-[#145fcc] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#124da8] disabled:cursor-not-allowed disabled:bg-blue-400"
             >
               {isSubmitting

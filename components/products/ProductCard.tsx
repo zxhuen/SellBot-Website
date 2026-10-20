@@ -72,7 +72,7 @@ export function ProductCard({
   return (
     <article
       className={[
-        "group flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md",
+        "group flex h-full min-w-0 flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md",
         isExiting ? "pointer-events-none scale-95 opacity-0" : "",
       ].join(" ")}
     >
@@ -81,7 +81,9 @@ export function ProductCard({
           <p className="break-all text-xs font-medium uppercase tracking-[0.14em] text-slate-500">
             Public ID: {publicId || "N/A"}
           </p>
-          <h2 className="mt-2 text-lg font-semibold text-slate-900">{product.title ?? product.name}</h2>
+          <h2 className="mt-2 break-words text-lg font-semibold text-slate-900 [overflow-wrap:anywhere]">
+            {product.title ?? product.name}
+          </h2>
         </div>
         <span
           className={[
@@ -116,7 +118,7 @@ export function ProductCard({
         {publicId ? (
           <Link
             href={`/chat?public_id=${encodeURIComponent(publicId)}`}
-            className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#145fcc]"
+            className="inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#145fcc]"
           >
             Open
           </Link>
@@ -125,7 +127,7 @@ export function ProductCard({
             type="button"
             disabled
             title="This product does not have a public ID."
-            className="inline-flex cursor-not-allowed items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-400"
+            className="inline-flex min-h-11 cursor-not-allowed items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-400"
           >
             Open
           </button>
@@ -133,20 +135,20 @@ export function ProductCard({
         <button
           type="button"
           onClick={() => onOpenAnalytics(productId)}
-          className="inline-flex items-center justify-center rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+          className="inline-flex min-h-11 items-center justify-center rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
         >
           View Count
         </button>
         <Link
           href={`/product-history?product_id=${encodeURIComponent(productId)}`}
-          className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#145fcc]"
+          className="inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#145fcc]"
         >
           Conversations
         </Link>
         <button
           type="button"
           onClick={() => void copyProductLink()}
-          className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#145fcc]"
+          className="inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#145fcc]"
         >
           {copyState === "copied" ? "Copied!" : copyState === "error" ? "Copy failed" : "Copy Link"}
         </button>
@@ -154,18 +156,18 @@ export function ProductCard({
           type="button"
           disabled={Boolean(action) || isSold}
           onClick={() => onMarkAsSold(productId)}
-          className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {action === "sold" ? "Marking sold..." : isSold ? "Sold" : "Mark as Sold"}
         </button>
         {isConfirmingDelete ? (
-          <span className="inline-flex items-center gap-2">
+          <span className="inline-flex min-w-0 flex-wrap items-center gap-2">
             <span className="text-xs text-slate-600">Delete this product?</span>
             <button
               type="button"
               disabled={Boolean(action)}
               onClick={() => onDelete(productId)}
-              className="inline-flex items-center justify-center rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-60"
+              className="inline-flex min-h-11 items-center justify-center rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-60"
             >
               {action === "delete" ? "Deleting..." : "Confirm"}
             </button>
@@ -173,7 +175,7 @@ export function ProductCard({
               type="button"
               disabled={Boolean(action)}
               onClick={() => setConfirmingDelete(false)}
-              className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 disabled:opacity-60"
+              className="min-h-11 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 disabled:opacity-60"
             >
               Cancel
             </button>
@@ -183,7 +185,7 @@ export function ProductCard({
             type="button"
             disabled={Boolean(action)}
             onClick={() => setConfirmingDelete(true)}
-            className="inline-flex items-center justify-center rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex min-h-11 items-center justify-center rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Delete
           </button>

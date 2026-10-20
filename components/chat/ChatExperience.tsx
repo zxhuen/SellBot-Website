@@ -99,7 +99,10 @@ export function ChatExperience() {
   }, [finishLoading, handleLoadFailure, handleLoadSuccess, publicId]);
 
   useEffect(() => {
-    historyEnd.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    historyEnd.current?.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      block: "end",
+    });
   }, [messages, isLoading, isSending]);
 
   const chatPath = publicId ? `/chat?public_id=${encodeURIComponent(publicId)}` : "/chat";
@@ -299,7 +302,7 @@ export function ChatExperience() {
                     rows={2}
                     maxLength={500}
                     disabled={!publicId || isLoading || isSending}
-                    className="min-h-12 flex-1 resize-y rounded-xl border border-slate-300 px-4 py-3 text-sm leading-6 outline-none transition focus:border-[#145fcc] focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                    className="min-h-12 min-w-0 flex-1 resize-y rounded-xl border border-slate-300 px-4 py-3 text-base leading-6 outline-none transition focus:border-[#145fcc] focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
                   />
                   <button
                     type="submit"
@@ -310,7 +313,9 @@ export function ChatExperience() {
                     {isSending ? "Sending…" : "Send"}
                   </button>
                 </div>
-                <p className="mt-2 text-right text-xs text-slate-400">{input.length}/500 · Enter to send, Shift+Enter for a new line</p>
+                <p className="mt-2 text-left text-xs text-slate-400 sm:text-right">
+                  {input.length}/500 · Enter to send, Shift+Enter for a new line
+                </p>
               </form>
             </>
           )}
