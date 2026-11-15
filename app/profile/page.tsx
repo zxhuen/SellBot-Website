@@ -1,12 +1,12 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { ProductsNavbar } from "@/components/products/ProductsNavbar";
 import { isAuthenticationError } from "@/lib/api-client";
 import { getUserProfile, type UserProfile } from "@/lib/profile";
+import { getUserInitial } from "@/lib/user-initial";
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -47,8 +47,7 @@ export default function ProfilePage() {
     };
   }, []);
 
-  const avatarUrl = profile?.avatar_url.trim();
-  const initial = profile?.display_name.trim().charAt(0).toUpperCase() || "?";
+  const initial = getUserInitial(profile?.display_name, profile?.email);
   const dailyLimit = profile?.subscription.daily_product_limit ?? 0;
   const productsCreatedToday = profile?.usage.products_created_today ?? 0;
   const dailyUsagePercent =
@@ -56,7 +55,7 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900">
-      <ProductsNavbar />
+      <ProductsNavbar userName={profile?.display_name || profile?.email} />
       <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
         <header className="mb-6">
           <h1 className="text-3xl font-semibold tracking-[-0.05em]">Your profile</h1>
@@ -87,23 +86,12 @@ export default function ProfilePage() {
         ) : profile ? (
           <div className="space-y-5">
             <section className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:flex-row sm:items-center">
-              {avatarUrl ? (
-                <Image
-                  src={avatarUrl}
-                  alt={`${profile.display_name}'s profile`}
-                  width={72}
-                  height={72}
-                  unoptimized
-                  className="h-[72px] w-[72px] shrink-0 rounded-full object-cover"
-                />
-              ) : (
-                <div
-                  aria-hidden="true"
-                  className="flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-full bg-blue-50 text-2xl font-semibold text-[#145fcc]"
-                >
-                  {initial}
-                </div>
-              )}
+              <div
+                aria-hidden="true"
+                className="flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-full bg-blue-50 text-2xl font-semibold text-[#145fcc]"
+              >
+                {initial}
+              </div>
               <div className="min-w-0">
                 <h2 className="truncate text-xl font-semibold text-slate-900">
                   {profile.display_name}
