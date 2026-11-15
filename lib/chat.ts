@@ -101,9 +101,16 @@ export async function sendLunaMessage(publicId: string, message: string): Promis
     },
   );
 
-  if (typeof response !== "string" || !response.trim()) {
+  const messageResponse =
+    typeof response === "string"
+      ? response
+      : isRecord(response) && typeof response.response === "string"
+        ? response.response
+        : null;
+
+  if (!messageResponse?.trim()) {
     throw new Error("The chat service returned an invalid response.");
   }
 
-  return response;
+  return messageResponse;
 }
